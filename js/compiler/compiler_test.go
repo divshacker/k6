@@ -100,7 +100,7 @@ func TestCompile(t *testing.T) {
 			src := `exports.d=1+(function() { return 2; })()`
 			pgm, code, err := c.Compile(src, "script.js", false, c.COpts)
 			require.NoError(t, err)
-			assert.Equal(t, "(function(module, exports){exports.d=1+(function() { return 2; })()\n})\n", code)
+			assert.Equal(t, "(function(module, exports){\nexports.d=1+(function() { return 2; })()\n})\n", code)
 			rt := goja.New()
 			v, err := rt.RunProgram(pgm)
 			if assert.NoError(t, err) {
@@ -137,7 +137,7 @@ func TestCompile(t *testing.T) {
 		t.Run("Wrap", func(t *testing.T) {
 			pgm, code, err := c.Compile(`exports.fn(3**2)`, "script.js", false, c.COpts)
 			require.NoError(t, err)
-			assert.Equal(t, "(function(module, exports){\"use strict\";exports.fn(Math.pow(3, 2));\n})\n", code)
+			assert.Equal(t, "(function(module, exports){\n\"use strict\";exports.fn(Math.pow(3, 2));\n})\n", code)
 			rt := goja.New()
 			v, err := rt.RunProgram(pgm)
 			if assert.NoError(t, err) {
