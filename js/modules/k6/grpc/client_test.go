@@ -23,9 +23,11 @@ package grpc
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/url"
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 
 	"google.golang.org/grpc/reflection"
@@ -610,14 +612,14 @@ func TestClient(t *testing.T) {
 }
 
 func assertResponse(t *testing.T, r codeBlock, err error, val goja.Value, tb *httpmultibin.HTTPMultiBin, samples chan stats.SampleContainer) {
-	if r.err == "" && r.windowsError == "" {
+	if isWindows && r.windowsError != "" && err != nil {
+		err = errors.New(strings.ReplaceAll(err.Error(), r.windowsError, r.err))
+	}
+	if r.err == "" {
 		assert.NoError(t, err)
-	} else if r.err != "" {
+	} else {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), r.err)
-	} else if r.windowsError != "" {
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), r.windowsError)
 	}
 	if r.val != nil {
 		require.NotNil(t, val)
