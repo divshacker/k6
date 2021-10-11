@@ -280,6 +280,80 @@ func TestRampingVUsGracefulRampDown(t *testing.T) {
 	}
 }
 
+func TestRampingVUsHandleRemainingVUs(t *testing.T) {
+	t.Parallel()
+
+	// there will be this number of VUs at max:
+	const maxVus = 2
+
+	// each VU will sleep an amount of time per iteration = sleep time.
+	// the sleep time will be more than the time of all stages plus
+	// graceful stop. so the VUs won't be able to finish their iterations.
+	//
+	// however:
+	// because of the GracefulRampDown, one of the VUs will be allowed to
+	// complete its iteration. and the other one will be interrupted.
+	const (
+		wantVuInterrupted uint32 = 1 // one VU will be interrupted
+		wantVuFinished    uint32 = 1 // one VU will finish an iteration
+	)
+
+	cfg := RampingVUsConfig{
+		BaseConfig: BaseConfig{
+			// give the test run more time to finish
+			GracefulStop: types.NullDurationFrom(50 * time.Millisecond),
+		},
+
+		// give VUs this amount of time to finish their iterations:
+		GracefulRampDown: types.NullDurationFrom(30 * time.Millisecond),
+
+		Stages: []Stage{
+			// ramp up to maxVUs immediately
+			{
+				Duration: types.NullDurationFrom(10 * time.Millisecond),
+				Target:   null.IntFrom(int64(maxVus)),
+			},
+			// ramp down to zero VUs and let the GracefulStop
+			// period to kick in before the first VU wakes up
+			{
+				Duration: types.NullDurationFrom(40 * time.Millisecond),
+				Target:   null.IntFrom(int64(0)),
+			},
+		},
+	}
+
+	var gotVuInterrupted, gotVuFinished uint32
+
+	iteration := func(ctx context.Context) error {
+		select {
+		case <-time.After(65 * time.Millisecond):
+			atomic.AddUint32(&gotVuFinished, 1)
+		case <-ctx.Done():
+			// the context used has the deadline of:
+			// stage durations + GracefulStop.
+			//
+			// here, the context becomes cancelled and one of the
+			// VUs is being interrupted.
+			atomic.AddUint32(&gotVuInterrupted, 1)
+		}
+		return nil
+	}
+
+	// run the executor
+	et, err := lib.NewExecutionTuple(nil, nil)
+	require.NoError(t, err)
+	ctx, cancel, executor, _ := setupExecutor(
+		t, cfg,
+		lib.NewExecutionState(lib.Options{}, et, maxVus, maxVus),
+		simpleRunner(iteration),
+	)
+	defer cancel()
+	require.NoError(t, executor.Run(ctx, nil, nil))
+
+	assert.Equal(t, wantVuInterrupted, atomic.LoadUint32(&gotVuInterrupted))
+	assert.Equal(t, wantVuFinished, atomic.LoadUint32(&gotVuFinished))
+}
+
 // Ensure there's no wobble of VUs during graceful ramp-down, without segments.
 // See https://github.com/k6io/k6/issues/1296
 func TestRampingVUsRampDownNoWobble(t *testing.T) {
