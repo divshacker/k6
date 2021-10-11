@@ -62,6 +62,7 @@ func newTestExecutionScheduler(
 	}
 	ctx, cancel = context.WithCancel(context.Background())
 	newOpts, err := executor.DeriveScenariosFromShortcuts(lib.Options{
+		SystemTags:              stats.NewSystemTagSet(stats.DefaultSystemTagSet),
 		MetricSamplesBufferSize: null.NewInt(200, false),
 	}.Apply(runner.GetOptions()).Apply(opts))
 	require.NoError(t, err)
