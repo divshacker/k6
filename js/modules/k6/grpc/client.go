@@ -237,7 +237,7 @@ func (c *Client) Connect(ctxPtr *context.Context, addr string, params map[string
 			var ok bool
 			reflect, ok = v.(bool)
 			if !ok {
-				return false, fmt.Errorf(`invalid value for 'reflect': '%#v', it needs to be boolean`, v)
+				return false, fmt.Errorf("invalid reflect value: '%#v', it needs to be boolean", v)
 			}
 
 		default:
