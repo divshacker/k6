@@ -307,7 +307,7 @@ func (c *Client) Connect(ctxPtr *context.Context, addr string, params map[string
 			err = c.reflect(ctxPtr)
 		})
 		if err != nil {
-			return false, fmt.Errorf("can't invoke reflect API: %w", err)
+			return false, fmt.Errorf("reflect: %w", err)
 		}
 	}
 	return true, nil
@@ -319,21 +319,21 @@ func (c *Client) reflect(ctxPtr *context.Context) error {
 	client := reflectpb.NewServerReflectionClient(c.conn)
 	methodClient, err := client.ServerReflectionInfo(*ctxPtr)
 	if err != nil {
-		return err
+		return fmt.Errorf("can't get server info: %w", err)
 	}
 	req := &reflectpb.ServerReflectionRequest{
 		MessageRequest: &reflectpb.ServerReflectionRequest_ListServices{},
 	}
 	if err = methodClient.Send(req); err != nil {
-		return err
+		return fmt.Errorf("can't send list services request: %w", err)
 	}
 	resp, err := methodClient.Recv()
 	if err != nil {
-		return err
+		return fmt.Errorf("can't receive list services request: %w", err)
 	}
 	listResp := resp.GetListServicesResponse()
 	if listResp == nil {
-		return fmt.Errorf("can't list services")
+		return fmt.Errorf("can't list services, nil response")
 	}
 	fdset := &descriptorpb.FileDescriptorSet{}
 	for _, service := range listResp.GetService() {
@@ -343,22 +343,25 @@ func (c *Client) reflect(ctxPtr *context.Context) error {
 			},
 		}
 		if err = methodClient.Send(req); err != nil {
-			return err
+			return fmt.Errorf("can't send file descriptors request on service %q: %w", service, err)
 		}
 		resp, err = methodClient.Recv()
 		if err != nil {
-			return fmt.Errorf("can't list methods on %q: %w", service, err)
+			return fmt.Errorf("can't receive file descriptors request on service %q: %w", service, err)
 		}
 		fdResp := resp.GetFileDescriptorResponse()
 		for _, raw := range fdResp.GetFileDescriptorProto() {
 			var fdp descriptorpb.FileDescriptorProto
 			if err = proto.Unmarshal(raw, &fdp); err != nil {
-				return err
+				return fmt.Errorf("can't unmarshal proto on service %q: %w", service, err)
 			}
 			fdset.File = append(fdset.File, &fdp)
 		}
 	}
 	_, err = c.convertToMethodInfo(fdset)
+	if err != nil {
+		err = fmt.Errorf("can't convert method info: %w", err)
+	}
 	return err
 }
 
