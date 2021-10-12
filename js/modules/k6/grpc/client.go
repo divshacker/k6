@@ -375,20 +375,16 @@ func (c *Client) Invoke(ctxPtr *context.Context,
 	if state == nil {
 		return nil, errInvokeRPCInInitContext
 	}
-
 	if c.conn == nil {
 		return nil, errors.New("no gRPC connection, you must call connect first")
 	}
-
 	if method == "" {
 		return nil, errors.New("method to invoke cannot be empty")
 	}
-
 	if method[0] != '/' {
 		method = "/" + method
 	}
 	md := c.mds[method]
-
 	if md == nil {
 		return nil, fmt.Errorf("method %q not found in file descriptors", method)
 	}
@@ -437,7 +433,6 @@ func (c *Client) Invoke(ctxPtr *context.Context,
 	if state.Options.SystemTags.Has(stats.TagURL) {
 		tags["url"] = fmt.Sprintf("%s%s", c.conn.Target(), method)
 	}
-
 	parts := strings.Split(method[1:], "/")
 	if state.Options.SystemTags.Has(stats.TagService) {
 		tags["service"] = parts[0]
@@ -513,7 +508,6 @@ func (c *Client) Invoke(ctxPtr *context.Context,
 		_ = json.Unmarshal(raw, &msg)
 		response.Message = msg
 	}
-
 	return &response, nil
 }
 
@@ -644,6 +638,5 @@ func formatPayload(payload interface{}) string {
 	if err != nil {
 		return ""
 	}
-
 	return string(b)
 }
