@@ -29,7 +29,6 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/dop251/goja"
@@ -68,9 +67,8 @@ var (
 
 // Client represents a gRPC client that can be used to make RPC requests
 type Client struct {
-	mds         map[string]protoreflect.MethodDescriptor
-	conn        *grpc.ClientConn
-	reflectOnce sync.Once
+	mds  map[string]protoreflect.MethodDescriptor
+	conn *grpc.ClientConn
 }
 
 // XClient represents the Client constructor (e.g. `new grpc.Client()`) and
