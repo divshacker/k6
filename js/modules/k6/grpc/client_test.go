@@ -574,7 +574,7 @@ func TestClient(t *testing.T) {
 			},
 			vuString: codeBlock{
 				code: `client.connect("GRPCBIN_ADDR", {reflect: true})`,
-				err:  "error invoking reflect API: rpc error: code = Unimplemented desc = unknown service grpc.reflection.v1alpha.ServerReflection",
+				err:  "rpc error: code = Unimplemented desc = unknown service grpc.reflection.v1alpha.ServerReflection",
 			},
 		},
 		{

@@ -160,14 +160,30 @@ func (c *Client) convertToMethodInfo(fdset *descriptorpb.FileDescriptorSet) ([]M
 	if err != nil {
 		return nil, err
 	}
-
 	var rtn []MethodInfo
 	if c.mds == nil {
 		// This allows us to call load() multiple times, without overwriting the
 		// previously loaded definitions.
 		c.mds = make(map[string]protoreflect.MethodDescriptor)
 	}
-
+	appendMethodInfo := func(
+		fd protoreflect.FileDescriptor,
+		sd protoreflect.ServiceDescriptor,
+		md protoreflect.MethodDescriptor,
+	) {
+		name := fmt.Sprintf("/%s/%s", sd.FullName(), md.Name())
+		c.mds[name] = md
+		rtn = append(rtn, MethodInfo{
+			MethodInfo: grpc.MethodInfo{
+				Name:           string(md.Name()),
+				IsClientStream: md.IsStreamingClient(),
+				IsServerStream: md.IsStreamingServer(),
+			},
+			Package:    string(fd.Package()),
+			Service:    string(sd.Name()),
+			FullMethod: name,
+		})
+	}
 	files.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
 		sds := fd.Services()
 		for i := 0; i < sds.Len(); i++ {
@@ -175,23 +191,11 @@ func (c *Client) convertToMethodInfo(fdset *descriptorpb.FileDescriptorSet) ([]M
 			mds := sd.Methods()
 			for j := 0; j < mds.Len(); j++ {
 				md := mds.Get(j)
-				name := fmt.Sprintf("/%s/%s", sd.FullName(), md.Name())
-				c.mds[name] = md
-				rtn = append(rtn, MethodInfo{
-					MethodInfo: grpc.MethodInfo{
-						Name:           string(md.Name()),
-						IsClientStream: md.IsStreamingClient(),
-						IsServerStream: md.IsStreamingServer(),
-					},
-					Package:    string(fd.Package()),
-					Service:    string(sd.Name()),
-					FullMethod: name,
-				})
+				appendMethodInfo(fd, sd, md)
 			}
 		}
 		return true
 	})
-
 	return rtn, nil
 }
 
@@ -317,7 +321,9 @@ func (c *Client) reflect(ctxPtr *context.Context) error {
 	if err != nil {
 		return err
 	}
-	req := &reflectpb.ServerReflectionRequest{MessageRequest: &reflectpb.ServerReflectionRequest_ListServices{}}
+	req := &reflectpb.ServerReflectionRequest{
+		MessageRequest: &reflectpb.ServerReflectionRequest_ListServices{},
+	}
 	if err = methodClient.Send(req); err != nil {
 		return err
 	}
@@ -341,15 +347,15 @@ func (c *Client) reflect(ctxPtr *context.Context) error {
 		}
 		resp, err = methodClient.Recv()
 		if err != nil {
-			return fmt.Errorf("can't list methods on '%s': %w", service, err)
+			return fmt.Errorf("can't list methods on %q: %w", service, err)
 		}
 		fdResp := resp.GetFileDescriptorResponse()
-		for _, f := range fdResp.GetFileDescriptorProto() {
-			a := &descriptorpb.FileDescriptorProto{}
-			if err = proto.Unmarshal(f, a); err != nil {
+		for _, raw := range fdResp.GetFileDescriptorProto() {
+			var fdp descriptorpb.FileDescriptorProto
+			if err = proto.Unmarshal(raw, &fdp); err != nil {
 				return err
 			}
-			fdset.File = append(fdset.File, a)
+			fdset.File = append(fdset.File, &fdp)
 		}
 	}
 	_, err = c.convertToMethodInfo(fdset)
