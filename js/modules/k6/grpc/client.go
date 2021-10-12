@@ -329,7 +329,7 @@ func (c *Client) reflect(ctxPtr *context.Context) error {
 	}
 	resp, err := methodClient.Recv()
 	if err != nil {
-		return fmt.Errorf("can't receive list services request: %w", err)
+		return fmt.Errorf("please enable server reflection on your grpc server: %w", err)
 	}
 	listResp := resp.GetListServicesResponse()
 	if listResp == nil {
