@@ -293,24 +293,19 @@ func (c *Client) Connect(ctxPtr *context.Context, addr string, params map[string
 		c.conn, err = grpc.DialContext(ctx, addr, opts...)
 		if err != nil {
 			errc <- err
-
 			return
+		}
+		if reflect {
+			err := c.reflect(ctxPtr)
+			if err != nil {
+				errc <- err
+				return
+			}
 		}
 		close(errc)
 	}()
-	if err := <-errc; err != nil {
-		return false, err
-	}
-	if reflect {
-		var err error
-		c.reflectOnce.Do(func() {
-			err = c.reflect(ctxPtr)
-		})
-		if err != nil {
-			return false, fmt.Errorf("reflect: %w", err)
-		}
-	}
-	return true, nil
+	err := <-errc
+	return err == nil, err
 }
 
 // reflect will use the grpc reflection api to make the file descriptors available to request.
