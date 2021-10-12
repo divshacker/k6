@@ -303,7 +303,7 @@ func (c *Client) Connect(ctxPtr *context.Context, addr string, params map[string
 			err = c.reflect(ctxPtr)
 		})
 		if err != nil {
-			return false, fmt.Errorf("error invoking reflect API: %w", err)
+			return false, fmt.Errorf("can't invoke reflect API: %w", err)
 		}
 	}
 	return true, nil
