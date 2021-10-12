@@ -341,7 +341,7 @@ func (c *Client) reflect(ctxPtr *context.Context) error {
 		}
 		resp, err = methodClient.Recv()
 		if err != nil {
-			return fmt.Errorf("error listing methods on '%s': %w", service, err)
+			return fmt.Errorf("can't list methods on '%s': %w", service, err)
 		}
 		fdResp := resp.GetFileDescriptorResponse()
 		for _, f := range fdResp.GetFileDescriptorProto() {
